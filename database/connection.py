@@ -15,16 +15,23 @@ logger = logging.getLogger(__name__)
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://postgres:password@postgres:5432/vocaldesk"
+    "sqlite:///./vocaldesk.db"
 )
 
-engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True,
-    pool_size=5,
-    max_overflow=10,
-    echo=False,
-)
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(
+        DATABASE_URL, 
+        connect_args={"check_same_thread": False},
+        echo=False
+    )
+else:
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,
+        pool_size=5,
+        max_overflow=10,
+        echo=False,
+    )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -73,7 +80,9 @@ def _seed_admin_user():
             return
 
         pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
-        hashed = pwd_ctx.hash(admin_password)
+        # Ensure password is not too long for bcrypt and handled as string
+        safe_password = str(admin_password)[:72]
+        hashed = pwd_ctx.hash(safe_password)
         admin = AdminUser(username=admin_username, hashed_password=hashed)
         db.add(admin)
         db.commit()
