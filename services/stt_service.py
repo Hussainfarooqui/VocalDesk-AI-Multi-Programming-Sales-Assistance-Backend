@@ -47,6 +47,15 @@ async def transcribe_audio(audio_file: UploadFile) -> str:
         content = await audio_file.read()
         tmp.write(content)
 
+    api_key = os.getenv("OPENAI_API_KEY", "")
+    if "sk-test-dummy" in api_key or "sk-your-openai" in api_key:
+        logger.info("Using mock STT response due to dummy API key.")
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        return "This is a mock transcription of the uploaded audio file."
+
     try:
         with open(tmp_path, "rb") as f:
             response = client.audio.transcriptions.create(

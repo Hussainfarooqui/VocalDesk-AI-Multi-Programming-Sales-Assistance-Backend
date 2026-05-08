@@ -53,7 +53,7 @@ app = FastAPI(
 # ─── CORS Middleware ─────────────────────────────────────────────────────────
 ALLOWED_ORIGINS = os.getenv(
     "ALLOWED_ORIGINS",
-    "http://localhost:8001,http://localhost:8000,http://localhost:3000"
+    "http://localhost:8001,http://127.0.0.1:8001,http://localhost:8000,http://localhost:3000,http://localhost:8002,http://127.0.0.1:8002"
 ).split(",")
 
 app.add_middleware(
@@ -83,14 +83,7 @@ from backend.routes import whatsapp       # noqa: E402
 app.include_router(whatsapp.router)
 
 # ─── Health & Root Endpoints ─────────────────────────────────────────────────
-@app.get("/", tags=["Root"])
-def root():
-    return {
-        "service": "VocalDesk API",
-        "version": "2.0.0",
-        "status": "running",
-        "docs": "/docs",
-    }
+# Root endpoint removed to allow StaticFiles to serve index.html by default
 
 
 @app.get("/health", tags=["Health"])

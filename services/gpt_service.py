@@ -58,6 +58,16 @@ def generate_response(transcript: str, conversation_history: list = None) -> dic
 
     logger.info(f"GPT request: {transcript[:100]}")
 
+    api_key = os.getenv("OPENAI_API_KEY", "")
+    if "sk-test-dummy" in api_key or "sk-your-openai" in api_key:
+        logger.info("Using mock GPT response due to dummy API key.")
+        return _parse_response(
+            "Hello! I am the VocalDesk mock AI. Your message was received successfully.\n"
+            "<lead_data>\n"
+            '{"name": null, "email": null, "phone": null, "product_interest": null}\n'
+            "</lead_data>"
+        )
+
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",

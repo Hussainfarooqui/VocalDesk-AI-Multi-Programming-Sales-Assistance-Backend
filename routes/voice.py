@@ -5,7 +5,7 @@ POST /api/text-input   → GPT → structured JSON response
 """
 
 import logging
-from fastapi import APIRouter, UploadFile, File, HTTPException, Body
+from fastapi import APIRouter, UploadFile, File, HTTPException, Body, Form
 from backend.services import stt_service, gpt_service
 
 logger = logging.getLogger(__name__)
@@ -15,6 +15,7 @@ router = APIRouter(prefix="/api", tags=["Voice & Text Input"])
 @router.post("/voice-input", summary="Audio upload → AI reply (REQ-B01)")
 async def voice_input(
     audio: UploadFile = File(..., description="Audio file (wav/mp3/webm/ogg)"),
+    conversation_history: str | None = Form(None),
     session_id: str = None,
 ):
     """
@@ -36,8 +37,17 @@ async def voice_input(
     if not transcript:
         raise HTTPException(status_code=422, detail="Could not transcribe audio. Please speak clearly.")
 
+    history = []
+    if conversation_history:
+        try:
+            import json
+            history = json.loads(conversation_history)
+        except Exception:
+            logger.warning("Invalid conversation_history payload received for voice input.")
+            history = []
+
     try:
-        result = gpt_service.generate_response(transcript)
+        result = gpt_service.generate_response(transcript, conversation_history=history)
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))
 
@@ -51,7 +61,15 @@ async def voice_input(
 
 @router.post("/text-input", summary="Text message → AI reply (REQ-B02)")
 async def text_input(
-    body: dict = Body(..., example={"message": "Hi, I'm interested in your product"}),
+    body: dict = Body(
+        ..., 
+        examples={
+            "default": {
+                "summary": "Basic text message",
+                "value": {"message": "Hi, I'm interested in your product"},
+            }
+        },
+    ),
 ):
     """
     Accept a text message, run through GPT.

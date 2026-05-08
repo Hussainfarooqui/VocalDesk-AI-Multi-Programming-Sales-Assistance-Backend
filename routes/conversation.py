@@ -20,10 +20,15 @@ async def end_conversation(
     background_tasks: BackgroundTasks,
     body: dict = Body(
         ...,
-        example={
-            "lead_data": {"name": "John", "email": "john@example.com", "phone": "123", "product_interest": "CRM"},
-            "conversation_summary": "User asked about pricing...",
-            "source_channel": "web",
+        examples={
+            "default": {
+                "summary": "End of conversation payload",
+                "value": {
+                    "lead_data": {"name": "John", "email": "john@example.com", "phone": "123", "product_interest": "CRM"},
+                    "conversation_summary": "User asked about pricing...",
+                    "source_channel": "web",
+                },
+            }
         },
     ),
     db: Session = Depends(get_db),
@@ -78,10 +83,15 @@ async def end_conversation(
 async def send_email(
     body: dict = Body(
         ...,
-        example={
-            "lead_name": "John Doe",
-            "lead_email": "john@example.com",
-            "lead_data": {"name": "John", "email": "john@example.com"},
+        examples={
+            "default": {
+                "summary": "Standalone email payload",
+                "value": {
+                    "lead_name": "John Doe",
+                    "lead_email": "john@example.com",
+                    "lead_data": {"name": "John", "email": "john@example.com"},
+                },
+            }
         },
     ),
 ):

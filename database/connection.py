@@ -70,7 +70,7 @@ def _seed_admin_user():
     from passlib.context import CryptContext
 
     admin_username = os.getenv("ADMIN_USERNAME", "admin")
-    admin_password = os.getenv("ADMIN_PASSWORD", "vocaldesk_admin_2024")
+    admin_password = os.getenv("ADMIN_PASSWORD", "admin123")
 
     db = SessionLocal()
     try:
