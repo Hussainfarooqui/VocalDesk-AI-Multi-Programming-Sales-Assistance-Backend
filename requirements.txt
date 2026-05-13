@@ -1,7 +1,10 @@
 fastapi
 uvicorn[standard]
 openai
+groq
+elevenlabs
 sqlalchemy
+pyodbc
 alembic
 python-jose[cryptography]
 passlib[bcrypt]
@@ -11,4 +14,3 @@ httpx
 python-dotenv
 pydantic
 pydantic-settings
-# psycopg2-binary  # Optional: only needed for Postgres

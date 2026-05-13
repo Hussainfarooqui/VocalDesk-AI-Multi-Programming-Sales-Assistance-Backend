@@ -6,7 +6,6 @@ Includes source_channel for multi-channel tracking (web / whatsapp).
 import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, Text, DateTime
-from sqlalchemy.dialects.postgresql import UUID
 from backend.database.connection import Base
 
 
@@ -16,9 +15,9 @@ class Lead(Base):
     __tablename__ = "leads"
 
     id = Column(
-        UUID(as_uuid=True),
+        String(36),
         primary_key=True,
-        default=uuid.uuid4,
+        default=lambda: str(uuid.uuid4()),
         index=True,
         nullable=False,
     )

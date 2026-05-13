@@ -1,6 +1,6 @@
 """
 VocalDesk – Database Connection
-SQLAlchemy engine, session factory, dependency injection, and admin seeding.
+Exclusive Engine: Microsoft SQL Server (SSMS) via pyodbc.
 """
 
 import os
@@ -13,25 +13,24 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
+# Default to local SQLEXPRESS if DATABASE_URL is missing
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "sqlite:///./vocaldesk.db"
+    "mssql+pyodbc://@localhost\\SQLEXPRESS/VocalDesk?driver=ODBC+Driver+17+for+SQL+Server&Trusted_Connection=yes&TrustServerCertificate=yes"
 )
 
-if DATABASE_URL.startswith("sqlite"):
-    engine = create_engine(
-        DATABASE_URL, 
-        connect_args={"check_same_thread": False},
-        echo=False
-    )
-else:
-    engine = create_engine(
-        DATABASE_URL,
-        pool_pre_ping=True,
-        pool_size=5,
-        max_overflow=10,
-        echo=False,
-    )
+# Enforce MSSQL – Fail fast if another engine is attempted
+if "mssql" not in DATABASE_URL.lower():
+    logger.error(f"Unsupported database engine detected: {DATABASE_URL.split('://')[0]}. VocalDesk requires MS SQL Server.")
+    raise ImportError("VocalDesk is configured for MS SQL Server ONLY. Please update DATABASE_URL in .env.")
+
+# SQL Server (SSMS) – Windows Authentication / Trusted Connection
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,
+    echo=False,
+)
+logger.info("Database engine: Microsoft SQL Server (SSMS)")
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -55,7 +54,11 @@ def create_tables():
     """Create all tables defined in models and seed admin user if missing."""
     # Import models to register them with Base
     from backend.models.lead import Lead           # noqa
-    from backend.models.admin_user import AdminUser  # noqa
+    from backend.models.user import User            # noqa
+    from backend.models.conversation import Conversation # noqa
+    from backend.models.voice_log import VoiceLog    # noqa
+    from backend.models.analytics import Analytics    # noqa
+    from backend.models.workflow_log import WorkflowLog # noqa
 
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables created/verified successfully.")
@@ -66,7 +69,7 @@ def create_tables():
 
 def _seed_admin_user():
     """Create the default admin user from environment variables if not present."""
-    from backend.models.admin_user import AdminUser
+    from backend.models.user import User
     from passlib.context import CryptContext
 
     admin_username = os.getenv("ADMIN_USERNAME", "admin")
@@ -74,7 +77,7 @@ def _seed_admin_user():
 
     db = SessionLocal()
     try:
-        existing = db.query(AdminUser).filter(AdminUser.username == admin_username).first()
+        existing = db.query(User).filter(User.username == admin_username).first()
         if existing:
             logger.info(f"Admin user '{admin_username}' already exists.")
             return
@@ -83,7 +86,7 @@ def _seed_admin_user():
         # Ensure password is not too long for bcrypt and handled as string
         safe_password = str(admin_password)[:72]
         hashed = pwd_ctx.hash(safe_password)
-        admin = AdminUser(username=admin_username, hashed_password=hashed)
+        admin = User(username=admin_username, hashed_password=hashed, role="admin")
         db.add(admin)
         db.commit()
         logger.info(f"Admin user '{admin_username}' seeded successfully.")

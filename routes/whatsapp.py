@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from fastapi.params import Depends
 
 from backend.database.connection import get_db
-from backend.services import gpt_service, lead_service, email_service
+from backend.services import groq_service, lead_service, email_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhook", tags=["WhatsApp"])
@@ -52,7 +52,7 @@ async def receive_whatsapp(
     """
     Process incoming WhatsApp messages:
     1. Parse message from Meta webhook payload
-    2. Generate AI reply via GPT
+    2. Generate AI reply via Groq (Llama)
     3. Send reply via Cloud API
     4. Store lead with source_channel="whatsapp"
     5. Trigger admin notification email (background)
@@ -93,10 +93,10 @@ async def receive_whatsapp(
 
     # Generate AI response
     try:
-        result = gpt_service.generate_response(user_text)
+        result = groq_service.generate_response(user_text)
         reply_text = result["reply_text"]
         lead_data = result["lead_data"]
-    except RuntimeError as e:
+    except Exception as e:
         logger.error(f"AI generation failed for WhatsApp: {e}")
         reply_text = "Thank you for reaching out! Our team will contact you shortly."
         lead_data = {}

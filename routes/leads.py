@@ -12,7 +12,7 @@ from sqlalchemy import func
 
 from backend.database.connection import get_db
 from backend.models.lead import Lead
-from backend.models.admin_user import AdminUser
+from backend.models.user import User
 from backend.routes.admin import get_current_admin
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api/leads", tags=["Leads"])
 @router.get("/stats", summary="Dashboard statistics (admin only)")
 def get_lead_stats(
     db: Session = Depends(get_db),
-    _: AdminUser = Depends(get_current_admin),
+    _: User = Depends(get_current_admin),
 ):
     """
     Return aggregate stats for the admin dashboard.
@@ -55,7 +55,7 @@ def list_leads(
     skip: int = Query(0, ge=0, description="Records to skip"),
     limit: int = Query(50, ge=1, le=200, description="Max records to return"),
     db: Session = Depends(get_db),
-    _: AdminUser = Depends(get_current_admin),
+    _: User = Depends(get_current_admin),
 ):
     """
     Return a paginated, most-recent-first list of all leads.

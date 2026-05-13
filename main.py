@@ -82,6 +82,10 @@ app.include_router(conversation.router)
 from backend.routes import whatsapp       # noqa: E402
 app.include_router(whatsapp.router)
 
+# Phase 7: Analytics (SRS FR-37–40)
+from backend.routes import analytics      # noqa: E402
+app.include_router(analytics.router)
+
 # ─── Health & Root Endpoints ─────────────────────────────────────────────────
 # Root endpoint removed to allow StaticFiles to serve index.html by default
 
