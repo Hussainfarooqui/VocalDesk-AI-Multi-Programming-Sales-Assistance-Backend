@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Body, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from backend.database.connection import get_db
-from backend.services import lead_service, email_service
+from backend.services import lead_service, email_service, n8n_service
 
 from typing import List, Optional
 from pydantic import BaseModel
@@ -64,6 +64,12 @@ async def end_conversation(
         email_service.send_admin_notification,
         lead_dict,
     )
+    
+    # Trigger n8n workflow asynchronously
+    background_tasks.add_task(
+        n8n_service.trigger_webhook,
+        lead_dict,
+    )
 
     logger.info(f"Conversation ended: lead_id={lead.id}")
 
@@ -92,3 +98,23 @@ async def send_email(
         "thank_you_sent": ty,
         "admin_sent": admin,
     }
+
+
+@router.post("/test-n8n", summary="Test n8n webhook connection")
+async def test_n8n():
+    """
+    Send dummy data to verify the n8n connection.
+    """
+    test_data = {
+        "id": "test-id-123",
+        "name": "Test User",
+        "email": "test@example.com",
+        "phone": "+1234567890",
+        "product_interest": "n8n Integration Test",
+        "source_channel": "test-bot"
+    }
+    success = n8n_service.trigger_webhook(test_data)
+    if success:
+        return {"success": True, "message": "Test data sent to n8n successfully!"}
+    else:
+        return {"success": False, "message": "Failed to send test data to n8n. Check backend logs."}
