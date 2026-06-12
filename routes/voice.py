@@ -48,14 +48,18 @@ async def voice_input(
         # Using Groq instead of GPT
         result = groq_service.generate_response(transcript, conversation_history=history)
         reply_text = result["reply_text"]
-        
-        # Generate TTS audio
-        audio_content = await tts_service.text_to_speech(reply_text)
-        audio_base64 = base64.b64encode(audio_content).decode("utf-8") if audio_content else None
-
     except Exception as e:
         logger.error(f"AI processing failed: {e}")
         raise HTTPException(status_code=503, detail="AI processing failed.")
+
+    # TTS is non-critical — if it fails, frontend uses browser speechSynthesis
+    audio_base64 = None
+    try:
+        audio_content = await tts_service.text_to_speech(reply_text)
+        if audio_content:
+            audio_base64 = base64.b64encode(audio_content).decode("utf-8")
+    except Exception as e:
+        logger.warning(f"TTS failed (non-critical): {e}")
 
     return {
         "success": True,
@@ -82,14 +86,18 @@ async def text_input(
     try:
         result = groq_service.generate_response(message, conversation_history=history)
         reply_text = result["reply_text"]
-        
-        # Generate TTS audio
-        audio_content = await tts_service.text_to_speech(reply_text)
-        audio_base64 = base64.b64encode(audio_content).decode("utf-8") if audio_content else None
-
     except Exception as e:
         logger.error(f"AI processing failed: {e}")
         raise HTTPException(status_code=503, detail="AI processing failed.")
+
+    # TTS is non-critical — if it fails, frontend uses browser speechSynthesis
+    audio_base64 = None
+    try:
+        audio_content = await tts_service.text_to_speech(reply_text)
+        if audio_content:
+            audio_base64 = base64.b64encode(audio_content).decode("utf-8")
+    except Exception as e:
+        logger.warning(f"TTS failed (non-critical): {e}")
 
     return {
         "success": True,

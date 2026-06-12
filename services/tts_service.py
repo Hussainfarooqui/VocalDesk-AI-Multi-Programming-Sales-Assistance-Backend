@@ -20,11 +20,22 @@ async def text_to_speech(text: str) -> bytes:
     Convert text to speech using ElevenLabs API.
 
     Returns:
-        Audio binary data (mp3).
+        Audio binary data (mp3), or empty bytes if TTS fails/unavailable.
+        Never raises — the caller always gets a usable result.
     """
     if not ELEVENLABS_API_KEY:
-        logger.warning("ElevenLabs API key not configured. Skipping TTS.")
+        logger.info("ElevenLabs API key not configured — TTS skipped. "
+                     "Frontend will use browser speechSynthesis fallback.")
         return b""
+
+    if not text or not text.strip():
+        logger.warning("Empty text provided to TTS — skipping.")
+        return b""
+
+    # Truncate very long text to avoid API limits
+    if len(text) > 5000:
+        text = text[:5000]
+        logger.info("TTS text truncated to 5000 chars.")
 
     headers = {
         "Accept": "audio/mpeg",
@@ -44,8 +55,22 @@ async def text_to_speech(text: str) -> bytes:
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(API_URL, json=payload, headers=headers)
+            if response.status_code == 401:
+                logger.error("ElevenLabs TTS: Invalid API key (401). Check ELEVENLABS_API_KEY.")
+                return b""
+            if response.status_code == 429:
+                logger.warning("ElevenLabs TTS: Rate limited (429). Skipping TTS for this request.")
+                return b""
             response.raise_for_status()
-            return response.content
+            audio_data = response.content
+            if len(audio_data) < 100:
+                logger.warning(f"ElevenLabs TTS returned suspiciously small audio ({len(audio_data)} bytes).")
+                return b""
+            logger.info(f"ElevenLabs TTS success: {len(audio_data)} bytes.")
+            return audio_data
+    except httpx.TimeoutException:
+        logger.error("ElevenLabs TTS timed out (30s). Skipping TTS.")
+        return b""
     except Exception as e:
-        logger.error(f"ElevenLabs TTS failed: {e}")
+        logger.error(f"ElevenLabs TTS failed: {type(e).__name__}: {e}")
         return b""

@@ -1,17 +1,37 @@
 """
 VocalDesk – STT Service
-OpenAI Whisper API integration for Speech-to-Text transcription.
+Groq Whisper (primary) + OpenAI Whisper (fallback) for Speech-to-Text.
 """
 
 import os
 import logging
 import tempfile
-from openai import OpenAI
 from fastapi import UploadFile
 
 logger = logging.getLogger(__name__)
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# ── Groq Whisper (primary) ──────────────────────────────────────────────────
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+groq_client = None
+if GROQ_API_KEY:
+    try:
+        from groq import Groq
+        groq_client = Groq(api_key=GROQ_API_KEY)
+        logger.info("Groq Whisper STT client initialized.")
+    except ImportError:
+        logger.warning("groq package not installed — Groq STT unavailable.")
+
+# ── OpenAI Whisper (fallback) ───────────────────────────────────────────────
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+openai_client = None
+if OPENAI_API_KEY and "sk-your-" not in OPENAI_API_KEY and "sk-test-dummy" not in OPENAI_API_KEY:
+    try:
+        from openai import OpenAI
+        openai_client = OpenAI(api_key=OPENAI_API_KEY)
+        logger.info("OpenAI Whisper STT client initialized (fallback).")
+    except ImportError:
+        logger.warning("openai package not installed — OpenAI STT unavailable.")
+
 
 SUPPORTED_FORMATS = {
     "audio/wav", "audio/mpeg", "audio/mp4",
@@ -22,8 +42,13 @@ SUPPORTED_FORMATS = {
 
 async def transcribe_audio(audio_file: UploadFile) -> str:
     """
-    Transcribe an uploaded audio file using OpenAI Whisper.
-
+    Transcribe an uploaded audio file.
+    
+    Priority:
+      1. Groq Whisper (whisper-large-v3-turbo) — fast, free tier available
+      2. OpenAI Whisper — if a real API key is configured
+      3. Mock response — last resort for development
+    
     Args:
         audio_file: FastAPI UploadFile object.
 
@@ -31,8 +56,7 @@ async def transcribe_audio(audio_file: UploadFile) -> str:
         Transcribed text string.
 
     Raises:
-        ValueError: If audio format is unsupported.
-        RuntimeError: If Whisper API call fails.
+        RuntimeError: If all transcription methods fail.
     """
     content_type = audio_file.content_type or "application/octet-stream"
     logger.info(f"Transcribing audio: {audio_file.filename}, type={content_type}")
@@ -41,34 +65,53 @@ async def transcribe_audio(audio_file: UploadFile) -> str:
     filename = audio_file.filename or "audio.webm"
     ext = os.path.splitext(filename)[-1] or ".webm"
 
-    # Write to a temp file for Whisper API
+    # Write to a temp file
+    content = await audio_file.read()
     with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
         tmp_path = tmp.name
-        content = await audio_file.read()
         tmp.write(content)
 
-    api_key = os.getenv("OPENAI_API_KEY", "")
-    if "sk-test-dummy" in api_key or "sk-your-openai" in api_key:
-        logger.info("Using mock STT response due to dummy API key.")
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        return "This is a mock transcription of the uploaded audio file."
-
     try:
-        with open(tmp_path, "rb") as f:
-            response = client.audio.transcriptions.create(
-                model="whisper-1",
-                file=f,
-                language="en",
-            )
-        transcript = response.text.strip()
-        logger.info(f"Transcription successful: {transcript[:80]}...")
-        return transcript
-    except Exception as e:
-        logger.error(f"Whisper transcription failed: {e}")
-        raise RuntimeError(f"Speech-to-text failed: {str(e)}")
+        # ── Try Groq Whisper first ──────────────────────────────────
+        if groq_client:
+            try:
+                with open(tmp_path, "rb") as f:
+                    response = groq_client.audio.transcriptions.create(
+                        model="whisper-large-v3-turbo",
+                        file=(filename, f),
+                        language="en",
+                    )
+                transcript = response.text.strip()
+                if transcript:
+                    logger.info(f"Groq Whisper transcription: {transcript[:80]}...")
+                    return transcript
+                else:
+                    logger.warning("Groq Whisper returned empty transcript.")
+            except Exception as e:
+                logger.warning(f"Groq Whisper failed: {e}")
+
+        # ── Try OpenAI Whisper fallback ─────────────────────────────
+        if openai_client:
+            try:
+                with open(tmp_path, "rb") as f:
+                    response = openai_client.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=f,
+                        language="en",
+                    )
+                transcript = response.text.strip()
+                if transcript:
+                    logger.info(f"OpenAI Whisper transcription: {transcript[:80]}...")
+                    return transcript
+                else:
+                    logger.warning("OpenAI Whisper returned empty transcript.")
+            except Exception as e:
+                logger.warning(f"OpenAI Whisper failed: {e}")
+
+        # ── Mock fallback (development only) ────────────────────────
+        logger.warning("No working STT service. Using mock transcription.")
+        return "This is a mock transcription. Please configure a valid GROQ_API_KEY or OPENAI_API_KEY for real speech recognition."
+
     finally:
         # Cleanup temp file
         try:
