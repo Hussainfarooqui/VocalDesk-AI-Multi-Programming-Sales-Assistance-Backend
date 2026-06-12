@@ -43,33 +43,27 @@ SUPPORTED_FORMATS = {
 async def transcribe_audio(audio_file: UploadFile) -> str:
     """
     Transcribe an uploaded audio file.
-    
-    Priority:
-      1. Groq Whisper (whisper-large-v3-turbo) — fast, free tier available
-      2. OpenAI Whisper — if a real API key is configured
-      3. Mock response — last resort for development
-    
-    Args:
-        audio_file: FastAPI UploadFile object.
-
-    Returns:
-        Transcribed text string.
-
-    Raises:
-        RuntimeError: If all transcription methods fail.
     """
     content_type = audio_file.content_type or "application/octet-stream"
     logger.info(f"Transcribing audio: {audio_file.filename}, type={content_type}")
 
     # Determine file extension
     filename = audio_file.filename or "audio.webm"
-    ext = os.path.splitext(filename)[-1] or ".webm"
+    content = await audio_file.read()
+    
+    return await transcribe_audio_bytes(content, filename)
+
+
+async def transcribe_audio_bytes(audio_bytes: bytes, filename: str = "audio.ogg") -> str:
+    """
+    Transcribe raw audio bytes.
+    """
+    ext = os.path.splitext(filename)[-1] or ".ogg"
 
     # Write to a temp file
-    content = await audio_file.read()
     with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
         tmp_path = tmp.name
-        tmp.write(content)
+        tmp.write(audio_bytes)
 
     try:
         # ── Try Groq Whisper first ──────────────────────────────────
@@ -108,7 +102,7 @@ async def transcribe_audio(audio_file: UploadFile) -> str:
             except Exception as e:
                 logger.warning(f"OpenAI Whisper failed: {e}")
 
-        # ── Mock fallback (development only) ────────────────────────
+        # ── Fallback to mock ────────────────────────────────────────
         logger.warning("No working STT service. Using mock transcription.")
         return "This is a mock transcription. Please configure a valid GROQ_API_KEY or OPENAI_API_KEY for real speech recognition."
 
