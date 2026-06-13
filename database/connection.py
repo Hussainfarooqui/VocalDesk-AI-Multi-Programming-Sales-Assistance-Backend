@@ -19,18 +19,17 @@ DATABASE_URL = os.getenv(
     "mssql+pyodbc://@localhost\\SQLEXPRESS/VocalDesk?driver=ODBC+Driver+17+for+SQL+Server&Trusted_Connection=yes&TrustServerCertificate=yes"
 )
 
-# Enforce MSSQL – Fail fast if another engine is attempted
-if "mssql" not in DATABASE_URL.lower():
-    logger.error(f"Unsupported database engine detected: {DATABASE_URL.split('://')[0]}. VocalDesk requires MS SQL Server.")
-    raise ImportError("VocalDesk is configured for MS SQL Server ONLY. Please update DATABASE_URL in .env.")
+# Fix Render postgres:// URL issue
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-# SQL Server (SSMS) – Windows Authentication / Trusted Connection
+# Initialize SQLAlchemy Engine
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
     echo=False,
 )
-logger.info("Database engine: Microsoft SQL Server (SSMS)")
+logger.info(f"Database engine initialized for: {DATABASE_URL.split('://')[0]}")
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
