@@ -104,6 +104,7 @@ def admin_login(
         "access_token": access_token,
         "token_type": "bearer",
         "username": user.username,
+        "role": user.role,
     }
 
 
@@ -141,6 +142,42 @@ def register_user(
     db.refresh(new_user)
 
     logger.info(f"New user registered: username='{username}', role='{new_user.role}'")
+    return {"success": True, "user": new_user.to_dict()}
+
+
+# ─── Public Signup Endpoint ───────────────────────────────────────────────────
+@router.post("/signup", summary="Public user registration")
+def public_signup(
+    body: UserRegister,
+    db: Session = Depends(get_db),
+):
+    """
+    Register a new user publicly (no admin token required).
+    """
+    username = body.username.strip()
+    password = body.password.strip()
+
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="Username and password are required.")
+
+    # Check for existing user
+    existing = db.query(User).filter(User.username == username).first()
+    if existing:
+        raise HTTPException(status_code=409, detail=f"Username '{username}' already exists.")
+
+    hashed = hash_password(password)
+    new_user = User(
+        username=username,
+        hashed_password=hashed,
+        email=body.email,
+        full_name=body.full_name,
+        role="user",  # Force role to user for public signups
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    logger.info(f"New public user registered: username='{username}'")
     return {"success": True, "user": new_user.to_dict()}
 
 
