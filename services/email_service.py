@@ -133,3 +133,30 @@ def send_admin_notification(lead_data: dict) -> bool:
     </body></html>
     """
     return _send_email(ADMIN_EMAIL, subject, body)
+
+
+def send_welcome_email(username: str, email: str) -> bool:
+    """
+    Send a welcome email when a user signs up.
+    """
+    if not email:
+        logger.info("No email provided during signup — skipping welcome email.")
+        return False
+        
+    subject = "Welcome to VocalDesk!"
+    body = f"""
+    <html><body style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #00A9A5, #00d4d0); padding: 40px; border-radius: 12px; text-align: center;">
+            <h1 style="color: white; margin: 0;">VocalDesk</h1>
+            <p style="color: rgba(255,255,255,0.9); margin-top: 8px;">AI Voice Sales Assistant</p>
+        </div>
+        <div style="padding: 32px;">
+            <h2 style="color: #00A9A5;">Welcome to VocalDesk, {username}! 🎉</h2>
+            <p>Your account has been successfully created. You can now log in and start using your AI Voice Assistant.</p>
+            <p>If you have any questions or need help getting started, just reply to this email!</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
+            <p style="color: #888; font-size: 14px;">VocalDesk — Multi-Platform AI Voice Sales Assistant</p>
+        </div>
+    </body></html>
+    """
+    return _send_email(email, subject, body)

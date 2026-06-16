@@ -8,7 +8,7 @@ JWT dependency for protecting admin endpoints.
 """
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Body, BackgroundTasks
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -16,6 +16,7 @@ from sqlalchemy import func
 from backend.database.connection import get_db
 from backend.models.user import User
 from backend.services.auth_service import verify_password, create_access_token, decode_access_token, hash_password
+from backend.services import email_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["Admin Auth"])
@@ -149,6 +150,7 @@ def register_user(
 @router.post("/signup", summary="Public user registration")
 def public_signup(
     body: UserRegister,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     """
@@ -176,6 +178,9 @@ def public_signup(
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
+    if body.email:
+        background_tasks.add_task(email_service.send_welcome_email, username, body.email)
 
     logger.info(f"New public user registered: username='{username}'")
     return {"success": True, "user": new_user.to_dict()}
