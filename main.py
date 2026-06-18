@@ -86,6 +86,10 @@ app.include_router(whatsapp.router)
 from backend.routes import analytics      # noqa: E402
 app.include_router(analytics.router)
 
+# Phase 8: Twilio live phone calls
+from backend.routes import twilio         # noqa: E402
+app.include_router(twilio.router)
+
 # ─── Health & Root Endpoints ─────────────────────────────────────────────────
 # Root endpoint removed to allow StaticFiles to serve index.html by default
 

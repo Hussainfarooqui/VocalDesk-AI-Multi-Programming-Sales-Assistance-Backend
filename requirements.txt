@@ -14,3 +14,4 @@ python-dotenv
 pydantic
 pydantic-settings
 psycopg2-binary
+pydub
