@@ -82,7 +82,9 @@ def admin_login(
     Returns:
         { access_token, token_type }
     """
-    user = db.query(User).filter(User.username == form_data.username).first()
+    user = db.query(User).filter(
+        (User.username == form_data.username) | (User.email == form_data.username)
+    ).first()
 
     if not user or not verify_password(form_data.password, user.hashed_password):
         logger.warning(f"Failed admin login attempt for username='{form_data.username}'")
