@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 # Default to local SQLEXPRESS if DATABASE_URL is missing
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "mssql+pyodbc://@localhost\\SQLEXPRESS/VocalDesk?driver=ODBC+Driver+17+for+SQL+Server&Trusted_Connection=yes&TrustServerCertificate=yes"
+    "sqlite:///./vocaldesk.db"
 )
 
 # Fix Render postgres:// URL issue
