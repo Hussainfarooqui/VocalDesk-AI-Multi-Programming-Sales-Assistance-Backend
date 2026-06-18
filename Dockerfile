@@ -12,14 +12,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Install Python dependencies
-COPY backend/requirements.txt /app/backend/requirements.txt
-RUN pip install --no-cache-dir -r backend/requirements.txt
+COPY requirements.txt /app/backend/requirements.txt
+RUN pip install --no-cache-dir -r /app/backend/requirements.txt
 
 # Copy backend source
-COPY backend/ /app/backend/
-
-# Copy static frontend
-COPY frontend/ /app/frontend/
+COPY . /app/backend/
 
 # Create audio output directory
 RUN mkdir -p /tmp/vocaldesk_audio
